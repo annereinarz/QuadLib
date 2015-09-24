@@ -1,0 +1,13 @@
+#!/bin/bash
+for n in {18..19}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/31.dat --n-regular=$n \
+             --singular=gauss-jacobi --combination-method=sobol
+done > Data/gj-sobol-31
+for n in {18..19}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/32.dat --n-regular=$n \
+             --singular=gauss-jacobi --combination-method=sobol
+done > Data/gj-sobol-32
+for n in {18..19}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/33.dat --n-regular=$n \
+             --singular=gauss-jacobi --combination-method=sobol
+done > Data/gj-sobol-33

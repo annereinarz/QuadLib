@@ -1,0 +1,338 @@
+\documentclass[a4paper,10pt]{article}
+
+\title{Parallel Implementation of a Quadrature Algorithm}
+\author{A. Reinarz}
+
+\usepackage[T1]{fontenc}
+\usepackage{ucs}
+\usepackage[utf8x]{inputenc}
+\usepackage{ngerman}
+\usepackage[ngerman]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{bbm}
+\usepackage{picinpar}
+
+\renewcommand{\labelenumi}{(\roman{enumi})}
+\usepackage{geometry}
+\geometry{tmargin=1cm,bmargin=2.5cm,lmargin=1cm,rmargin=1cm}
+\newcommand{\real}{\mathbbm{R}}
+
+\parindent=0pt
+
+\begin{document}
+\numberwithin{equation}{subsection}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Structures}
+Let $S^{(1)}$ and $S^{(2)}$ denote the two simplices we want to integrate over, they are each of dimension $d$.
+With $k$ we denote the dimension of $S^{(1)}\cap S^{(2)}$. 
+\subsection{Vertexlist}
+A structure containing a list of the vertices of the two simplices $S^{(1)}$ and $S^{(2)}$.
+\begin{verbatim}
+  int s1;   int s2;
+  int** vtxlist;
+\end{verbatim}
+Here $\verb=s1= = d$, the spatial dimension and $\verb=s2= = 2d-(k+1)$.
+\verb=vtxlist= contains the coordinates of the vertices, in the following order:
+\begin{enumerate}
+\item $k+1$ shared vertices of $S^{(1)}$ and $S^{(2)}$
+\item $d-k-1$ remaining vertices of $S^{(1)}$
+\item $d-k-1$ remaining vertices of $S^{(2)}$
+\end{enumerate}
+\subsubsection*{Important routines}
+There are routines for the initialisation and deallocation of the memory for this structure, they can be 
+found in main.c and are described more thoroughly in the section on routines.
+\begin{itemize}
+\item \begin{verbatim} Vertexlist get_vertexlist(int sim);\end{verbatim}
+\item \begin{verbatim} void free_vertexlist(Vertexlist vtxlist);\end{verbatim}
+\end{itemize}
+
+\subsection{AffineTrafo}
+A structure containing the parameters of the affine transformation
+ $$S_d \times S_d\rightarrow S^{(1)} \times S^{(2)}$$
+using the same notation as in step 1 of the coordinate transformations.
+\begin{verbatim}
+  double** A1;   double** A2;
+  double* v10;   double* v20;
+  int lvtx;      int d;
+\end{verbatim}
+\subsubsection*{Important routines}
+The routine 
+\begin{verbatim}AffineTrafo determineAffineTrafo(int d,int k, Vertexlist vtxlist);\end{verbatim}
+initialises the affine transformation and sets the values using the list of vertices.
+
+\subsection{QuadraturePoints}
+A structure containing the quadrature points.
+\begin{verbatim}
+  int n;     int d;
+  double** t;
+  double* wt;
+\end{verbatim}
+\verb=t= contains the quadrature points, it has the size $n \times d$. \verb=wt= is a vector of length n 
+containing the quadrature weights corresponding to a line of \verb=t=.
+\subsubsection*{Example}
+Using this structure to calculate an integral:
+\begin{displaymath}
+  \int_D \varphi(x) dx = \sum_i \varphi(t[i])\cdot wt[i],~~\text{ where }D\subset \real^{2d}.
+\end{displaymath}
+
+\subsubsection*{Important routines}
+There are routines for the initialisation and deallocation of the memory for this structure. There are
+also routines to allow a larger number of quadrature points or a higher spatial dimension. These routines can be 
+found in quadpoints.c and are described more thoroughly in the section on routines.
+\begin{itemize}
+\item \begin{verbatim}QuadraturePoints resizequadpointsn(QuadraturePoints quadpoints, int size);\end{verbatim}
+\item \begin{verbatim}QuadraturePoints resizequadpointsd(QuadraturePoints quadpoints, int size);\end{verbatim}
+\item \begin{verbatim}void init_quadpoints(QuadraturePoints* qp, int n, int d); \end{verbatim}
+\item \begin{verbatim}void free_qp(QuadraturePoints qp);\end{verbatim}
+\end{itemize}
+
+\subsection{Quad2}
+Another structure containing quadrature points. 
+\begin{verbatim}
+  int luv;    int ruv;       
+  int lzh;    int rzh;          
+  double **u;
+  double **v;
+  double **zh;
+  double *w;
+\end{verbatim}
+Here \verb=u= is a vector of quadrature points of the size $\verb=luv= \times \verb=ruv=$,
+ \verb=v= is also a vector of quadrature points of the size $\verb=luv= \times \verb=ruv=$,
+\verb=zh= is a vector of quadrature points of the size $\verb=lzh= \times \verb=rzh=$ and
+\verb=w= is a vector of quadrature weights of the length \verb=ruv=
+The only difference to \textbf{QuadraturePoints} is that the quadrature points are stored in smaller groups.
+\subsubsection*{Example}
+ Using this structure to calculate an integral:
+\begin{displaymath}
+  \int_{S_d} \int_{S_d} \varphi(u,v,u-v) du dv = \sum_i \varphi(u[i],v[i],zh[i])\cdot w[i].
+\end{displaymath}
+
+\subsubsection*{Important routines}
+There are routines for the initialisation and deallocation of the memory for this structure, they can be 
+found in quadpoints.c and are described more thoroughly in the section on routines.
+\begin{itemize}
+\item \begin{verbatim}void free_Quad2(Quad2 qp);\end{verbatim}
+\item \begin{verbatim}void init_Quad2(Quad2* qp, int luv, int ruv, int lzh, int rzh);\end{verbatim}
+\end{itemize}
+\newpage
+
+\section{Routines}
+Each .c file contains several routines. Each subsection corresponds to a certain file, which is usually named
+after the largest file it contains.
+\subsection{main.c}
+\subsubsection{main}
+The function \verb=main= takes information on which simulation to run, sets up mpi, starts processes
+ and allocates portions of the calculation to individual processes.
+The information on which simulation to run must be entered into the file by hand.
+The main calls \verb=get_vertexlist= and \verb=determineAffineTrafo=.
+The number of processes necessary for the rest of the algorithm depends on \verb=k=, 
+the dimension of intersection.
+\begin{description}
+\item[k=0, -1] Only one process is necessary. The main simply calls squad\textunderscore nonperm with the first process
+                 and prints the returned value.
+\item[k>0] $2^{k}-1$ processes necessary. To allocate portions of algorithm the first process runs over two 
+for loops. The first loop runs from $j = 0$ to $k-1$, the second loop runs from $perm=0$ to 
+$\frac{k!}{j!(k-j)!}$ and sends each process the number of a permutation and a j. Then each process calls 
+\verb=squad_perm= and calculates part of the quadrature for its permutation and j.\\
+Then the first process collects the values calculated by the other processes and sums them up.                
+\end{description}
+ 
+\subsubsection{get\textunderscore vertexlist}
+\textbf{Usage}: \verb=Vertexlist get_vertexlist(int sim);=\\
+This function \verb=get_vertexlist= recieves an integer \verb=sim= and creates a Vertexlist. \verb=sim= is
+a two digit number the first number gives the spatial dimension \verb=d= and the second digit gives
+the dimension of the intersection of the two simplices \verb=k=. Then the function allocates memory and
+chooses a Vertexlist from a predefined list.
+\subsubsection{free\textunderscore vertexlist}
+\textbf{Usage}: \verb=void free_vertexlist(Vertexlist vtxlist);=\\
+The function \verb=free_vertexlist= recieves a Vertexlist and deallocates the memory.
+
+\subsection{functions.c}
+Contains the functions we wish to integrate. So far there are four choices:
+\begin{enumerate}
+\item \begin{verbatim}double* Function1(Quad2 q2 , int d, int k);    \end{verbatim}
+       This function is given by: $F(x,y,z)=\|z\| ^{\alpha}\text{, we set }\alpha=-2d+\epsilon.$
+\item \begin{verbatim}double* Function2(Quad2 q2, int d, int k);    \end{verbatim}
+       This function is given by: $F(x,y,z)=\|x(i)-y(i)\| ^{\alpha}\text{, we set }\alpha=-2d+k+\epsilon.$
+\item \begin{verbatim}double* Function3(Quad2 q2, int d, int k);    \end{verbatim}
+       This function is given by: $F(x,y,z)=\|z\| ^{-1}$
+\item \begin{verbatim}double* Function4(Quad2 q2, int d, int k);    \end{verbatim}
+       This function is given by: $F(x,y,z)=\|(x(i)-y(i)\| ^{-1}$
+\end{enumerate}
+
+\subsection{BasicSubQuad.c}
+\subsubsection{BasicSubQuad}
+\textbf{Usage}: \verb=void OriginQuad(int* active,int size, QuadraturePoints* qp);=\\
+The function \verb=BasicSubQuad= realises steps 8,7 and 6 of the coordinate transforms and computes 
+the basic subquadrature for the approximation of 
+\begin{displaymath}
+ \int_{S_{d-k}} \int_{S_{d-k}} \int_{A^+_{N_j,R_j}} \int_{E_k(z)} \varphi 
+                     (\check{u},\check{v},\tilde{z},\tilde{u}) d\check{u}d\check{v}d\tilde{z}d\tilde{u}.
+\end{displaymath}
+\verb=BasicSubQuad= recieves the number of the basic subquadrature \verb=j=, the dimension of
+ $S^{(1)}\cap S^{(2)}$ \verb=k=, the spatial dimension \verb=d= and a pointer to QuadraturePoints \verb=qp=. 
+The QuadraturePoints \verb=qp= should contain a tensor product quadrature rule on $ [0,1]^d$.
+It then writes the points and weights of the basic subquadrature into \verb=qp=. To do so it uses the 
+functions \verb=OriginQuad= and \verb=C2S=.
+\subsubsection{OriginQuad}
+\textbf{Usage}: \verb=void C2S(QuadraturePoints* qp,int startidx, int endidx);=\\
+The function \verb=OriginQuad= realises step 8 of the coordinate transformations. It recieves a pointer 
+to QuadraturePoints \verb=qp=, containing a quadrature rule on a cube and a range of indices, which 
+participate in the transformation. These indices run from \verb=startidx= to \verb=endidx=. It writes 
+the resultant quadrature rule into \verb=qp=.
+\subsubsection{C2S}
+\textbf{Usage}: \verb=void BasicSubQuad( int j, int k, int d, QuadraturePoints* quadpoints);=\\
+The function \verb=C2S= realises the parametrisation: 
+\begin{displaymath}
+  S_d=\{x=\chi(t)~:~t\in [0,1]^d\},\text{ where }\chi_j(t)=\begin{cases}t_1...t_j(1-t_{j+1})~~&j=1,...,d-1,\\
+                                                                t_1...t_d&j=d.\end{cases}
+\end{displaymath}
+\verb=C2S= recieves a pointer to QuadraturePoints \verb=qp= and writes the resultant quadrature rule into 
+\verb=qp=.
+
+\subsection{Quadpoints.c}
+\subsubsection{resizequadpointsn}
+\textbf{Usage}: \verb=QuadraturePoints resizequadpointsn(QuadraturePoints qp, int size);=\\
+The function \verb=resizequadpointsn= recieves QuadraturePoints \verb=qp= and an integer \verb=size=. 
+It then allocates enough memory for the QuadraturePoints to be $size\cdot qp.n$ long.
+\subsubsection{resizequadpointsd}
+\textbf{Usage}: \verb=QuadraturePoints resizequadpointsd(QuadraturePoints qp, int size);=\\
+The function \verb=resizequadpointsd= recieves QuadraturePoints \verb=qp= and an integer \verb=size=. 
+It then allocates enough memory for the QuadraturePoints to have $size\cdot qp.d$ dimensions.
+It is currently not needed by the code.
+\subsubsection{init\textunderscore quadpoints}
+\textbf{Usage}: \verb=void init_quadpoints(QuadraturePoints* qp, int n, int d); =\\
+The function \verb=init_quadpoints= allocates memory for the QuadraturePoints \verb=qp=. The integers
+are set as follows: $qp.n=n$ and $qp.d=d$.
+\subsubsection{init\textunderscore Quad2}
+\textbf{Usage}: \verb=void init_Quad2(Quad2* qp, int luv, int ruv, int lzh, int rzh);=\\
+The function \verb=init_Quad2= allocates memory for the Quad2 \verb=qp=. The integers
+are set as follows: $qp.luv=luv$, $qp.ruv=ruv$, $qp.lzh=lzh$ and $qp.rzh=rzh$.
+\subsubsection{free\textunderscore qp}
+\textbf{Usage}: \verb=void free_qp(QuadraturePoints qp);=\\
+The function \verb=free_qp= recieves QuadraturePoints and deallocates the memory.
+\subsubsection{free\textunderscore Quad2}
+\textbf{Usage}: \verb=void free_Quad2(Quad2 qp);=\\
+The function \verb=free_Quad2= recieves Quad2 and deallocates the memory.
+
+\subsection{Tensorquad.c}\label{sec:Tensorquad}
+\subsubsection{GLquad}
+\textbf{Usage}: \verb=void GLquad(QuadraturePoints* qp, int n, double a, double b);=\\
+The function \verb=GLquad= computes the Gauss-Lobatto quadrature rule on the interval $[\verb=a=,\verb=b=]$
+ with \verb=n= quadrature points and weights. It writes the quadrature rule into \verb=qp=.
+\subsubsection{CGLquad}
+\textbf{Usage}: \verb=void CGLquad(QuadraturePoints* qp, int n);=\\
+The function \verb=CGLquad= computes the composite-Gauss-Lobatto quadrature rule on the interval 
+$[0,1]$. To do so it divides $[0,1]$ into $\verb=n=-1$ intervals and calls \verb=GLquad= on each one 
+with $\lceil\verb=n=(1+(1-j)/\verb=n=)\rceil$ points, where j corresponds to the number of the interval.
+ It writes the resultant quadrature rule into \verb=qp=.
+\subsubsection{TensorQuad}
+\textbf{Usage}: \verb=void TensorQuad(int it, int lx, QuadraturePoints*QP, QuadraturePoints qp);=\\
+The function \verb=TensorQuad= generates a tensorproduct quadrature rule. It recieves a pointer to
+ QuadraturePoints \verb=QP= and QuadraturePoints \verb=qp= and two integers \verb=it=
+and \verb=lx=. It uses the integers to calculate the actual size of the QuadraturePoints. This is necessary
+since enough space has been allocated for \verb=QP= to hold the resultant tensor product quadrature rule, and
+as a result \verb=QP.n= and \verb=qp.d= do not hold the actual size of \verb=QP=. Instead they hold the size
+the tensorproduct quadrature rule will have.\\
+Let $ly=\verb=qp.n=$ be the number of quadrature points in \verb=qp=, $lx=lx \cdot ly^{\verb=it=-1}$, be the number of 
+quadrature points in \verb=QP= and $ny=\verb=qp.d=$,$nx=it*\verb=qp.d=$ correspond to the dimension of \verb=qp= and 
+\verb=QP= respectively. The resultant tensor product quadrature rule has the size $l_x l_y \times n_x+n_y$.
+If the quadrature rules in \verb=QP= and \verb=qp= were suitable for the approximation of integrals of the 
+form:\begin{displaymath}
+      \int_{D_1}\varphi_1(x)dx\approx\sum_{i=0}^{l_x-1}\varphi_1(\verb=QP.t=[i])\verb=QP.wt=[i] \text{ and }
+      \int_{D_2}\varphi_2(y)dy\approx\sum_{i=0}^{l_y-1}\varphi_2(\verb=qp.t=[i])\verb=qp.wt=[i]
+     \end{displaymath}
+then the resultant quadrature rule suitable for the approximation of:
+\begin{displaymath}
+ \int_{D_1}\int_{D_2}\varphi_3(x,y)dx dy\approx\sum_{i=0}^{l_x-1}\sum_{j=0}^{l_y-1}
+                \varphi_3(\verb=QP.t=[i],\verb=qp.t=[j])\verb=QP.wt=[i]\verb=qp.wt=[j]
+\end{displaymath}
+
+\subsection{squad.c}
+\subsubsection{determinant}
+\textbf{Usage}: \verb=double determinant(double**A, int m);=\\
+The function \verb=determinant= calculates the determinant of a given matrix \verb=A= of size \verb=m=.
+It uses the Lapack function \verb=dgetrf_=.
+\subsubsection{Quadrature}
+\textbf{Usage}: \verb=void Quadrature(int d, int k,int whichF, double* ptrQ, Quad2 q);=\\
+The function \verb=Quadrature= calculates the actual quadrature. It recieves the spatial dimension\verb=d=,
+ the dimension of the intersection \verb=k=, an integer corresponding to a choice of function to integrate
+\verb=whichF=, a pointer to a double \verb=ptrQ= which is used to store the result
+ and a Quad2 \verb=q= containing the quadrature rule to use. 
+\subsubsection{determineAffineTrafo}
+\textbf{Usage}: \verb=AffineTrafo determineAffineTrafo(int d,int k, Vertexlist vtxlist);=\\
+The function \verb=determineAffineTrafo= computes the parameters of the affine transformation to the
+ physical coordinates, as descibed in step 1 of the coordinate transformations. It recieves the spatial
+dimension \verb=d=, the dimension of the intersection \verb=k= and a list of vertices \verb=vtxlist= and returns
+an AffineTrafo containing the parameters of the transformation.
+\subsubsection{QuadratureRule}
+\textbf{Usage}: \verb=QuadraturePoints QuadratureRule(int k, int d, int nr, int ns);=\\
+The function \verb=QuadratureRule= computes the quadrature rule on $[0,1]^{2d}$. It recieves the dimension
+of the intersection \verb=k=, which corresponds to the number of directions for singular (composite Gauss-
+Lobatto) quadrature, the spatial dimension \verb=d=, and the number of points in each direction of regular
+quadrature \verb=nr= and singular quadrature \verb=ns=. It uses the routines in section \ref{sec:Tensorquad}.
+\subsubsection{CalcPerm}
+\textbf{Usage}: \verb=int CalcPerm(int j, int k, int d, int* U, int perm);=\\
+The function \verb=CalcPerm= generates permutations in lexiographic order. It recieves the number of a 
+subquadrature \verb=j=, the dimension of the intersection \verb=k=, the spatial dimension \verb=d=, a pointer to
+a vector \verb=U= containing a permutation, which is assumed to be the identity permutation and an integer 
+\verb=iter= giving the number of permutations to go through. The new permutation is written into \verb=U=.
+\subsubsection{Quad2RefS}
+\textbf{Usage}: \verb=void Quad2RefS(int k, int d,  Quad2* qp);=\\
+The function \verb=Quad2RefS= realises step 2 of the coordinate transformations. It recieves the dimension
+of the intersection \verb=k=, the spatial dimension \verb=d= and a pointer to a Quad2 \verb=qp=. \verb=qp=
+should contain a quadrature rule before the coordinate transformation and is used to hold the result.\\
+A Quad2 structure is necessary instead of a QuadraturePoints structure to avoid subtractive cancellation.
+\subsubsection{Quad2PhyS}
+\textbf{Usage}: \verb=Quad2 Quad2PhyS(int k, int d, Quad2 qp, AffineTrafo A );=\\
+The function \verb=Quad2PhyS= realises step 1 of the coordinate transformations. It recieves the dimension
+of the intersection \verb=k=, the spatial dimension \verb=d=, a Quad2 \verb=qp= and an AffineTrafo \verb=A=.
+It then calculates the transformation of the quadrature rule in \verb=qp= to the physical coordinates and writes
+the transformed rule back into \verb=qp=.
+\subsubsection{PermRefl}
+\textbf{Usage}: \begin{verbatim} void PermRefl(int k, int d, QuadraturePoints* QP, AffineTrafo A, int* P, double* Q,
+                                                                int flag, int whichF);\end{verbatim}
+The function \verb=PermRefl= recieves the dimension of the intersection \verb=k=, the spatial dimension
+ \verb=d=, a pointer to QuadraturePoints \verb=QP=, an AffineTrafo \verb=A=, a pointer to a vector \verb=P=
+containing a permuation, a pointer to a double \verb=Q=, in which to write the quadrature value, a flag \verb=flag=
+and an integer \verb=whichF= corresponding to the function we want to integrate.
+The functionality of \verb=PermRefl= depends on the value of \verb=flag=.
+\begin{description}
+\item[flag=0] This flag is only used in the case where the intersection is empty or consists of only one vertex,
+               ie: $\verb=k=\leq 0$.\\
+	       In this case \verb=PermRefl= realises step 1 of the coordinate transformations, transference to
+               the physical simplex.
+\item[flag=1] In this case \verb=PermRefl=realises the permutations from step 5 of the coordinate transformations. 
+\item[flag=2] In this case \verb=PermRefl=realises the reflections from step 4 of the coordinate transformations.
+\end{description}
+
+\subsubsection{squad\textunderscore nonperm}
+\textbf{Usage}: \verb=double squad_nonperm(int whichF, AffineTrafo A,int d, int k, int nr, int ns);=\\
+The function \verb=squad_nonperm= is used in the case where the dimension of the intersection \verb=k= is less
+than 0. In this case no subquadrature is necessary and only one process is necessary.
+The function takes an integer \verb=whichF= corresponding to the choice of function to integrate, an AffineTrafo
+\verb=A=, giving the affine transformation to the physical simplex, the spatial dimension \verb=d=, the number of
+quadrature points to use in each regular and singular direction, given by \verb=nr= and \verb=ns= respectively.\\
+This function calculates a quadrature rule on $[0,1]^{2d}$ and transforms it into a suitable quadrature rule on
+the simplices given by the affine transformation. It then calculates the quadrature value and returns it.
+\subsubsection{squad\textunderscore perm}
+\textbf{Usage}: \verb=double squad_perm(int whichF, AffineTrafo A,int d, int k, int nr, int ns, int j, int perm);=\\
+The function \verb=squad_perm= is used when the dimension of the intersection \verb=k= is greater than 0 and
+subquadrature is necessary. It calculates one portion of the subquadrature for one permutation. The values 
+calculated by each process in \verb=squad_perm= must still be added to get the actual quadrature value.\\
+The function recieves an integer \verb=whichF= corresponding to the choice of function to integrate, an AffineTrafo
+\verb=A=, giving the affine transformation to the physical simplex, the spatial dimension \verb=d=, the number of
+quadrature points to use in each regular and singular direction, given by \verb=nr= and \verb=ns= respectively,
+an integer \verb=j= corresponding to the number of the subquadrature and an integer \verb=perm= corresponding
+to the number of the permutation to use.\\
+This function calculates a quadrature rule on $[0,1]^{2d}$ and transforms it into a suitable quadrature rule on
+the simplices given by the affine transformation using \verb=PermRefl= to calculate permutations and reflections
+as in step 4 and 5 of the coordinate transformation. It then calculates a quadrature value and returns it.
+
+\end{document}

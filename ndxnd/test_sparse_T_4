@@ -1,0 +1,21 @@
+#!/bin/bash
+for n in {1..5}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/40.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-4 --regular-sparse-T=-8
+done > Data/gj-kp-sparse-T-40
+for n in {1..5}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/41.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-4 --regular-sparse-T=-8
+done > Data/gj-kp-sparse-T-41
+for n in {1..5}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/42.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-4 --regular-sparse-T=-8
+done > Data/gj-kp-sparse-T-42
+for n in {1..5}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/43.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-4 --regular-sparse-T=-8
+done > Data/gj-kp-sparse-T-43
+for n in {1..5}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/44.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-4 --regular-sparse-T=-8
+done > Data/gj-kp-sparse-T-44

@@ -1,0 +1,20 @@
+#!/bin/bash
+for n in {1..10}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/40.dat --n-regular=$n --regular=gauss-legendre \             --singular=gauss-jacobi --combination-method=full-tensor
+done > Data/gj-gl-full-40
+for n in {1..10}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/41.dat --n-regular=$n --regular=gauss-legendre \
+             --singular=gauss-jacobi --combination-method=full-tensor
+done > Data/gj-gl-full-41
+for n in {1..10}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/42.dat --n-regular=$n --regular=gauss-legendre \
+             --singular=gauss-jacobi --combination-method=full-tensor
+done > Data/gj-gl-full-42
+for n in {1..10}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/43.dat --n-regular=$n --regular=gauss-legendre \
+             --singular=gauss-jacobi --combination-method=full-tensor
+done > Data/gj-gl-full-43
+for n in {1..10}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/44.dat --n-regular=$n --regular=gauss-legendre \
+             --singular=gauss-jacobi --combination-method=full-tensor
+done > Data/gj-gl-full-44

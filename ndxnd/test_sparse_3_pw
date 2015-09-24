@@ -1,0 +1,17 @@
+#!/bin/bash
+for n in {1..7}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/30.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-1 --portionwise
+done > Data/gj-kp-sparse-30
+for n in {1..7}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/31.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-1 --portionwise
+done > Data/gj-kp-sparse-31
+for n in {1..7}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/32.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-1 --portionwise
+done > Data/gj-kp-sparse-32
+for n in {1..7}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/33.dat --n-regular=$n --regular=kronrod-patterson \
+             --singular=gauss-jacobi --combination-method=sparse --regular-sparse-p=-1 --portionwise
+done > Data/gj-kp-sparse-33

@@ -1,0 +1,9 @@
+#!/bin/bash
+for n in {1..5}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/32.dat --n-regular=$n --regular=gauss-legendre \
+             --singular=gauss-jacobi --combination-method=full-tensor
+done > Data/gj-gl-tensor-32
+for n in {1..5}; do 
+  ./cubequad --function=1 --vertexlist=vertexlists/33.dat --n-regular=$n --regular=gauss-legendre \
+             --singular=gauss-jacobi --combination-method=full-tensor
+done > Data/gj-gl-tensor-33
